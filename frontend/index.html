@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIFA World Cup AI Command Center</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- SVG Color Blindness Filters -->
+  <svg style="position: absolute; height: 0; width: 0;">
+    <defs>
+      <!-- Protanopia (Red-Weak/Blind) -->
+      <filter id="protanopia-filter">
+        <feColorMatrix type="matrix" values="0.567, 0.433, 0,     0, 0,
+                                             0.558, 0.442, 0,     0, 0,
+                                             0,     0.242, 0.758, 0, 0,
+                                             0,     0,     0,     1, 0"/>
+      </filter>
+      <!-- Deuteranopia (Green-Weak/Blind) -->
+      <filter id="deuteranopia-filter">
+        <feColorMatrix type="matrix" values="0.625, 0.375, 0,   0, 0,
+                                             0.7,   0.3,   0,   0, 0,
+                                             0,     0.3,   0.7, 0, 0,
+                                             0,     0,     0,   1, 0"/>
+      </filter>
+      <!-- Tritanopia (Blue-Weak/Blind) -->
+      <filter id="tritanopia-filter">
+        <feColorMatrix type="matrix" values="0.95,  0.05,  0,     0, 0,
+                                             0,     0.433, 0.567, 0, 0,
+                                             0,     0.475, 0.525, 0, 0,
+                                             0,     0,     0,     1, 0"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <div id="app-layout">
+    
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <img src="logo.png" alt="FIFA Logo" class="logo-icon" style="background: none; box-shadow: none; object-fit: contain; border-radius: 0; border: none; padding: 0;">
+        <div class="brand-text">
+          FIFA AI Center
+          <span>Command & Analytics</span>
+        </div>
+      </div>
+      
+      <div class="sidebar-menu">
+        <div class="menu-section-header">Core Modules</div>
+        
+        <div class="menu-item active" data-target="page-landing" id="menu-landing">
+          <i data-lucide="home"></i> Welcome Hub
+        </div>
+        
+        <div class="menu-item" data-target="page-fan" id="menu-fan">
+          <i data-lucide="smile"></i> Fan Dashboard
+        </div>
+        
+        <div class="menu-item" data-target="page-ops" id="menu-ops">
+          <i data-lucide="shield-alert"></i> Operations Control
+        </div>
+        
+        <div class="menu-item" data-target="page-volunteer" id="menu-volunteer">
+          <i data-lucide="users"></i> Volunteer Copilot
+        </div>
+        
+        <div class="menu-section-header">AI Predictions</div>
+        
+        <div class="menu-item" data-target="page-crowd" id="menu-crowd">
+          <i data-lucide="activity"></i> Crowd Intelligence
+        </div>
+        
+        <div class="menu-item" data-target="page-transport" id="menu-transport">
+          <i data-lucide="bus"></i> Transportation AI
+        </div>
+        
+        <div class="menu-item" data-target="page-emergency" id="menu-emergency">
+          <i data-lucide="alert-triangle"></i> Emergency Center
+        </div>
+        
+        <div class="menu-section-header">Services</div>
+        
+        <div class="menu-item" data-target="page-chat" id="menu-chat">
+          <i data-lucide="message-square"></i> RAG AI Assistant
+        </div>
+        
+        <div class="menu-item" data-target="page-analytics" id="menu-analytics">
+          <i data-lucide="bar-chart-2"></i> Sustainability AI
+        </div>
+        
+        <div class="menu-item" data-target="page-reports" id="menu-reports">
+          <i data-lucide="file-text"></i> Operational Reports
+        </div>
+        
+        <div class="menu-item" data-target="page-settings" id="menu-settings">
+          <i data-lucide="settings"></i> System Settings
+        </div>
+      </div>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar" id="user-avatar-initial">O</div>
+          <div class="user-info">
+            <span class="user-name" id="user-display-name">FIFA Operator</span>
+            <span class="user-role" id="user-display-role">Level 3 Admin</span>
+          </div>
+        </div>
+        <button class="btn-secondary-action" style="padding: 6px;" id="theme-toggle" title="Toggle Theme">
+          <i data-lucide="sun"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Frame -->
+    <div id="main-wrapper">
+      
+      <!-- Top Header Bar -->
+      <header id="top-bar">
+        <div class="top-bar-left">
+          <button class="mobile-menu-btn" id="mobile-sidebar-toggle">
+            <i data-lucide="menu"></i>
+          </button>
+          <h1 class="page-title" id="page-header-title">Welcome Hub</h1>
+        </div>
+        
+        <div class="top-bar-right">
+          <!-- Role Switcher -->
+          <select id="role-select" class="btn-secondary-action" style="background: rgba(255,255,255,0.06); outline:none;">
+            <option value="operator" style="color:#000;">Role: Operator (Admin)</option>
+            <option value="volunteer" style="color:#000;">Role: Volunteer</option>
+            <option value="fan" style="color:#000;">Role: Fan (Visitor)</option>
+          </select>
+          
+          <!-- Live Status Alerts -->
+          <div class="status-pill warning" id="alert-banner-status">
+            <span class="pulse-dot" style="width:8px; height:8px; background:var(--accent-yellow); border-radius:50%; display:inline-block; animation: pulseRecording 1.2s infinite;"></span>
+            <span>Live Sector C Queue Delay</span>
+          </div>
+          
+          <button class="btn-primary-action" id="trigger-emergency-simulation">
+            <i data-lucide="alert-octagon"></i>
+            <span>Simulate Egress</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- View Containers -->
+      
+      <!-- 1. Landing Page -->
+      <main class="page-container active-page" id="page-landing">
+        <div class="glass-card" style="background: linear-gradient(135deg, rgba(225, 6, 0, 0.1) 0%, rgba(0, 34, 68, 0.3) 100%); border-color: rgba(225, 6, 0, 0.2);">
+          <h2 style="font-family: var(--font-display); font-size: 26px; margin-bottom: 8px;">FIFA World Cup 2026 AI Command Center</h2>
+          <p style="color: var(--text-secondary); max-width: 800px; font-size: 14px; line-height: 1.6;">
+            Welcome to the intelligent digital twin and Operations Platform for MetLife Stadium, NY/NJ. This platform orchestrates LangGraph agents, predictive transportation, crowd intelligence dashboards, and RAG-powered multilingual assistant systems to ensure safety and comfort for over 80,000 attendees.
+          </p>
+        </div>
+
+        <div class="card-grid">
+          <div class="glass-card">
+            <div class="card-title">Live Stadium Capacity <i data-lucide="users"></i></div>
+            <div class="card-value" id="land-capacity">78,540 / 82,500</div>
+            <div class="card-subtitle"><span class="trend-up">↑ 1.2%</span> flow speed normal</div>
+          </div>
+          <div class="glass-card">
+            <div class="card-title">Active AI Agents <i data-lucide="bot"></i></div>
+            <div class="card-value" id="land-agents">7 / 7</div>
+            <div class="card-subtitle"><span class="trend-up">100%</span> coordination rate</div>
+          </div>
+          <div class="glass-card">
+            <div class="card-title">Resolved Inquiries <i data-lucide="message-circle"></i></div>
+            <div class="card-value" id="land-chatops">12,845</div>
+            <div class="card-subtitle"><span class="trend-up">99.4%</span> CSAT score</div>
+          </div>
+          <div class="glass-card">
+            <div class="card-title">Eco-Efficiency Index <i data-lucide="leaf"></i></div>
+            <div class="card-value" id="land-eco">94.8%</div>
+            <div class="card-subtitle"><span class="trend-up">↑ 3.4%</span> vs match avg</div>
+          </div>
+        </div>
+
+        <div class="dashboard-row">
+          <div class="glass-card">
+            <div class="section-header">Upcoming Fixture & Operations Schedule <i data-lucide="calendar"></i></div>
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Match</th>
+                  <th>DateTime</th>
+                  <th>Incident Level</th>
+                  <th>Expected Vol</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight:600;">USA vs England (Group B)</td>
+                  <td>Today, 20:00 EST</td>
+                  <td><span class="status-pill warning">Medium Risk</span></td>
+                  <td>82,500 (Sold Out)</td>
+                  <td><span class="status-pill success">Doors Open</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:600;">Mexico vs Argentina</td>
+                  <td>July 18, 18:00 EST</td>
+                  <td><span class="status-pill danger">High Risk</span></td>
+                  <td>80,000</td>
+                  <td><span class="status-pill info">Scheduled</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:600;">Canada vs France</td>
+                  <td>July 21, 15:00 EST</td>
+                  <td><span class="status-pill success">Low Risk</span></td>
+                  <td>68,200</td>
+                  <td><span class="status-pill info">Scheduled</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="glass-card">
+            <div class="section-header">Active Operations Alerts</div>
+            <div style="display:flex; flex-direction:column; gap:12px;" id="landing-alerts-list">
+              <div style="padding:12px; border-radius:var(--radius-md); background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245,158,11,0.2); font-size:12px;">
+                <strong style="color:var(--accent-yellow);">Transport Delay:</strong> Subway Line 4 bottleneck. Rerouting shuttle buses A & B.
+              </div>
+              <div style="padding:12px; border-radius:var(--radius-md); background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16,185,129,0.2); font-size:12px;">
+                <strong style="color:var(--accent-green);">Sustainability Alert:</strong> Sector 3 water pressure normal. Recycling bins emptied.
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- 2. Fan Dashboard -->
+      <main class="page-container" id="page-fan">
+        <div class="dashboard-row">
+          <div class="glass-card">
+            <div class="section-header">Digital Fan Ticket & Entry Pass</div>
+            <div style="display:flex; align-items:center; gap:30px; margin-top:10px;">
+              <!-- QR Code Mock -->
+              <div style="width:140px; height:140px; background:#fff; border-radius:var(--radius-md); padding:10px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 10px rgba(0,0,0,0.5);">
+                <div style="background-image:url('https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=FIFA2026-TICKET-SEC112-ROW12'); width:100%; height:100%; background-size:cover;"></div>
+              </div>
+              <div style="flex:1;">
+                <h3 style="font-family:var(--font-display); font-size:20px; color:var(--accent-cyan); margin-bottom:8px;">Match 32: USA vs England</h3>
+                <p style="font-size:13px; margin-bottom:4px;"><strong>Seat:</strong> Sector 112, Row 12, Seat 4</p>
+                <p style="font-size:13px; margin-bottom:4px;"><strong>Gate Assignment:</strong> Gate C (North Entrance)</p>
+                <p style="font-size:13px; margin-bottom:12px;"><strong>Weather Forecast:</strong> 72°F Clear Skies</p>
+                <div style="display:flex; gap:10px;">
+                  <button class="btn-primary-action" id="fan-nav-to-seat"><i data-lucide="navigation"></i> Route to Seat</button>
+                  <button class="btn-secondary-action" id="fan-order-food"><i data-lucide="shopping-bag"></i> Order Food</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="section-header">Ask AI Assistant (Speech Enabled)</div>
+            <div style="text-align:center; padding:20px 0;">
+              <button class="voice-chat-btn" id="voice-assistant-mic" style="width:70px; height:70px; margin:0 auto 12px auto; display:flex;">
+                <i data-lucide="mic" style="width:30px; height:30px;"></i>
+              </button>
+              <div id="voice-assistant-status" style="font-size:12px; color:var(--text-secondary); font-weight:600;">Click to speak (e.g. "Where is my seat?")</div>
+              <div id="voice-assistant-transcript" style="font-size:11px; color:var(--text-muted); font-style:italic; margin-top:8px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-row-equal">
+          <div class="glass-card">
+            <div class="section-header">Interactive Indoor Route Finder</div>
+            <div class="stadium-twin-container" style="height:300px;">
+              <div class="stadium-twin-overlay">
+                <span>🟢 Current Location (Gate C)</span>
+                <span>🔴 Target (Sec 112 Restroom)</span>
+                <span>♿ Route: Wheelchair Accessible</span>
+              </div>
+              <svg class="map-svg" viewBox="0 0 400 300" id="fan-navigation-svg">
+                <!-- Seating tier outline -->
+                <circle cx="200" cy="150" r="120" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="15" />
+                <circle cx="200" cy="150" r="80" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="25" />
+                <rect x="195" y="20" width="10" height="260" fill="rgba(255,255,255,0.03)" />
+                <rect x="50" y="145" width="300" height="10" fill="rgba(255,255,255,0.03)" />
+                <!-- Current point Gate C -->
+                <circle cx="200" cy="30" r="8" fill="#10b981" />
+                <!-- Target Restroom -->
+                <circle cx="120" cy="110" r="8" fill="#ef4444" />
+                <!-- Path -->
+                <path d="M 200 30 L 200 110 L 120 110" fill="none" stroke="#00f2fe" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="evacuation-path" id="fan-path-line" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="section-header">Exclusive Food & Concession Recommendations</div>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-radius:var(--radius-md); background:rgba(255,255,255,0.02); border:1px solid var(--border-light);">
+                <div>
+                  <h4 style="font-size:13px; font-weight:600;">Liberty Burgers (Sec 115)</h4>
+                  <p style="font-size:11px; color:var(--text-secondary);">Crowd Queue: Short (3 min delay)</p>
+                </div>
+                <span class="status-pill success">Vegan options</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-radius:var(--radius-md); background:rgba(255,255,255,0.02); border:1px solid var(--border-light);">
+                <div>
+                  <h4 style="font-size:13px; font-weight:600;">MetLife Tacos (Sec 104)</h4>
+                  <p style="font-size:11px; color:var(--text-secondary);">Crowd Queue: High (14 min delay)</p>
+                </div>
+                <span class="status-pill warning">10% Fan Discount</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-radius:var(--radius-md); background:rgba(255,255,255,0.02); border:1px solid var(--border-light);">
+                <div>
+                  <h4 style="font-size:13px; font-weight:600;">Classic stadium Hot Dogs (Sec 121)</h4>
+                  <p style="font-size:11px; color:var(--text-secondary);">Crowd Queue: Normal (5 min delay)</p>
+                </div>
+                <span class="status-pill success">Quick Checkout</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- 3. Operations Dashboard -->
+      <main class="page-container" id="page-ops">
+        <div class="card-grid">
+          <div class="glass-card">
+            <div class="card-title">Live Occupancy <i data-lucide="bar-chart"></i></div>
+            <div class="card-value">95.2%</div>
+            <div class="card-subtitle">82,500 Max seats</div>
+          </div>
+          <div class="glass-card">
+            <div class="card-title">Gate C Flow Rate <i data-lucide="activity"></i></div>
+            <div class="card-value" style="color:var(--accent-yellow);">152 / min</div>
+            <div class="card-subtitle"><span class="trend-up">Slow queues</span> due to ticket scanner</div>
+          </div>
+          <div class="glass-card">
+            <div class="card-title">Active Incidents <i data-lucide="shield-alert"></i></div>
+            <div class="card-value" style="color:var(--accent-red);" id="ops-incident-count">3</div>
+            <div class="card-subtitle"><span class="trend-down">2 Dispatched</span> response average 4.2m</div>
+          </div>
+          <div class="glass-card">
+            <div class="card-title">Carbon Offset Rate <i data-lucide="leaf"></i></div>
+            <div class="card-value" style="color:var(--accent-green);">98.2 CO₂e</div>
+            <div class="card-subtitle">Grid load stabilized</div>
+          </div>
+        </div>
+
+        <div class="dashboard-row">
+          <div class="glass-card">
+            <div class="section-header">Stadium Digital Twin Command View <i data-lucide="compass"></i></div>
+            <div class="stadium-twin-container">
+              <div class="stadium-twin-overlay">
+                <span>🔴 Sector A (VIP Box): Crowd Normal</span>
+                <span>🔴 Sector B (North Gate): Flow Bottleneck</span>
+                <span>🔴 Sector C (East Gate): Egress Alert</span>
+              </div>
+              <svg class="map-svg" viewBox="0 0 500 350" id="ops-digital-twin-svg">
+                <!-- Stadium outline concentric circles -->
+                <ellipse cx="250" cy="175" rx="200" ry="140" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="30" />
+                <ellipse cx="250" cy="175" rx="150" ry="100" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="25" />
+                <ellipse cx="250" cy="175" rx="90" ry="60" fill="rgba(16,185,129,0.08)" stroke="rgba(255,255,255,0.03)" stroke-width="2" />
+                
+                <!-- Sector dividers -->
+                <line x1="250" y1="35" x2="250" y2="315" stroke="rgba(255,255,255,0.05)" stroke-width="2" />
+                <line x1="50" y1="175" x2="450" y2="175" stroke="rgba(255,255,255,0.05)" stroke-width="2" />
+                
+                <!-- Sector heat indicators -->
+                <!-- Sector A: green -->
+                <path d="M 250 175 L 400 175 A 150 100 0 0 0 250 75 Z" fill="rgba(16, 185, 129, 0.15)" stroke="var(--accent-green)" stroke-width="1.5" />
+                <!-- Sector B: yellow (bottleneck) -->
+                <path d="M 250 175 L 250 75 A 150 100 0 0 0 100 175 Z" fill="rgba(245, 158, 11, 0.3)" stroke="var(--accent-yellow)" stroke-width="2" class="crowded-corridor" />
+                <!-- Sector C: blue -->
+                <path d="M 250 175 L 100 175 A 150 100 0 0 0 250 275 Z" fill="rgba(0, 242, 254, 0.15)" stroke="var(--accent-cyan)" stroke-width="1.5" />
+                <!-- Sector D: orange/red -->
+                <path d="M 250 175 L 250 275 A 150 100 0 0 0 400 175 Z" fill="rgba(239, 68, 68, 0.1)" stroke="var(--accent-red)" stroke-width="1.5" />
+                
+                <!-- Heat indicators labels -->
+                <text x="320" y="120" fill="#fff" font-size="10" font-family="var(--font-sans)">VIP Sector A</text>
+                <text x="140" y="120" fill="#fff" font-size="10" font-family="var(--font-sans)">North Gate Sector B</text>
+                <text x="140" y="240" fill="#fff" font-size="10" font-family="var(--font-sans)">East Gate Sector C</text>
+                <text x="320" y="240" fill="#fff" font-size="10" font-family="var(--font-sans)">South Gate Sector D</text>
+              </svg>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="section-header">Live Operations Feed & AI Dispatch</div>
+            <div class="agent-logs-container">
+              <div class="agent-logs-scroll" id="ops-incident-log">
+                <div class="agent-log-line system">[20:10:15] System Boot complete. Operational sensors active.</div>
+                <div class="agent-log-line agent-ops">[20:10:22] Operations Agent: Processing real-time crowd metrics. Grid normal.</div>
+                <div class="agent-log-line agent-crowd">[20:11:05] Crowd Agent: Gate B scanners reporting queue latency > 12 minutes.</div>
+                <div class="agent-log-line agent-ops">[20:11:10] Operations Agent Alert: Dispatching Volunteer Support Team 4 to assist with scanner processing at Gate B.</div>
+              </div>
+              <div style="display:flex; gap:10px; margin-top:12px;">
+                <input type="text" id="ops-admin-command" placeholder="Enter manual dispatch command..." class="chat-input" style="padding:10px 15px; font-size:12px;">
+                <button class="btn-secondary-action" id="ops-send-command">Execute</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- 4. Volunteer Dashboard -->
+      <main class="page-container" id="page-volunteer">
+        <div class="dashboard-row-equal">
+          <div class="glass-card">
+            <div class="section-header">My Shift Tasks & Volunteer Assignments <i data-lucide="check-square"></i></div>
+            <div style="display:flex; flex-direction:column; gap:12px;" id="volunteer-tasks-list">
+              <div style="padding:14px; border-radius:var(--radius-md); background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245,158,11,0.2); position:relative;">
+                <h4 style="font-size:13px; font-weight:600; margin-bottom:4px; color:var(--accent-yellow);">scanner assistance at Gate B</h4>
+                <p style="font-size:11px; color:var(--text-secondary); margin-bottom:10px;">Queue buildup at scanners. Assist elderly and family tickets.</p>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="status-pill warning" style="font-size:9px;">Active Task</span>
+                  <button class="btn-primary-action" style="padding:4px 8px; font-size:10px; background:var(--grad-sustain); color:white;" onclick="completeVolunteerTask(this)">Complete Task</button>
+                </div>
+              </div>
+              
+              <div style="padding:14px; border-radius:var(--radius-md); background:rgba(255,255,255,0.02); border:1px solid var(--border-light); position:relative;">
+                <h4 style="font-size:13px; font-weight:600; margin-bottom:4px;">Direct accessibility routing</h4>
+                <p style="font-size:11px; color:var(--text-secondary); margin-bottom:10px;">Assist fan in wheelchair at Sector 112 to reach Exit A ramp.</p>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="status-pill info" style="font-size:9px;">Assigned</span>
+                  <button class="btn-primary-action" style="padding:4px 8px; font-size:10px; background:var(--grad-sustain); color:white;" onclick="completeVolunteerTask(this)">Complete Task</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="section-header">Live Translation & Intercom System <i data-lucide="globe"></i></div>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Incoming Announcement (Spanish)</label>
+                <div style="padding:10px; background:rgba(255,255,255,0.02); border:1px solid var(--border-light); border-radius:var(--radius-md); font-size:12px; font-style:italic;">
+                  "Por favor, diríjase a la puerta C si su asiento está en el sector 110 al 115 para evitar aglomeraciones."
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:center;">
+                <button class="btn-secondary-action" id="translate-announcement-btn">
+                  <i data-lucide="arrow-down"></i> Translate to English via AI
+                </button>
+              </div>
+              <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">Translated Announcement (English)</label>
+                <div id="translation-output" style="padding:10px; background:rgba(0,242,254,0.04); border:1px solid rgba(0,242,254,0.15); border-radius:var(--radius-md); font-size:12px; font-weight:500;">
+                  (Translated text will appear here)
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- 5. Crowd Intelligence -->
+      <main class="page-container" id="page-crowd">
+        <div class="dashboard-row">
+          <div class="glass-card">
+            <div class="section-header">Concourse Queue Estimations & Crowding Predictor</div>
+            <div class="stadium-twin-container" style="height:340px;">
+              <svg class="map-svg" viewBox="0 0 500 350" id="crowd-heat-svg">
+                <ellipse cx="250" cy="175" rx="200" ry="140" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="30" />
+                <ellipse cx="250" cy="175" rx="150" ry="100" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="25" />
+                
+                <!-- Crowd particles/heat spots -->
+                <circle cx="150" cy="100" r="30" fill="rgba(239, 68, 68, 0.45)" filter="blur(8px)" />
+                <circle cx="170" cy="90" r="20" fill="rgba(239, 68, 68, 0.5)" filter="blur(8px)" />
+                <circle cx="280" cy="240" r="35" fill="rgba(245, 158, 11, 0.4)" filter="blur(8px)" />
+                <circle cx="340" cy="140" r="25" fill="rgba(16, 185, 129, 0.3)" filter="blur(8px)" />
+                
+                <!-- Live text labels showing congestion % -->
+                <text x="130" y="100" fill="#fff" font-size="12" font-weight="700">Gate B: 92% (High)</text>
+                <text x="260" y="245" fill="#fff" font-size="12" font-weight="700">Gate D: 64% (Medium)</text>
+                <text x="320" y="145" fill="#fff" font-size="12" font-weight="700">Gate A: 28% (Low)</text>
+              </svg>
+            </div>
+          </div>
+          
+          <div class="glass-card">
+            <div class="section-header">Crowd Agent AI Recommendations</div>
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <div style="padding:14px; background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.2); border-radius:var(--radius-md);">
+                <h4 style="font-size:13px; font-weight:600; color:var(--accent-red); margin-bottom:4px;">Sector 112 Congestion Action Plan</h4>
+                <p style="font-size:11.5px; line-height:1.5; color:var(--text-secondary);">Crowd congestion at Gate B/North Hall is backing up to Sector 112 corridors. AI recommends opening backup exit Gate B2 immediately and redirecting VIP shuttle lines to avoid congestion.</p>
+                <button class="btn-primary-action" style="margin-top:10px; font-size:11px; background:var(--grad-primary); border-radius:var(--radius-sm);" id="ops-action-trigger-1">Deploy Egress Plan B2</button>
+              </div>
+              
+              <div style="padding:14px; background:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.2); border-radius:var(--radius-md);">
+                <h4 style="font-size:13px; font-weight:600; color:var(--accent-green); margin-bottom:4px;">Predictive Queue Relief at Concession C</h4>
+                <p style="font-size:11.5px; line-height:1.5; color:var(--text-secondary);">Concession line C wait time has reached 14 minutes. AI recommends pushing a 15% discount notification for Concession A (3-minute queue) to fans in Sectors 114-118 via the Fan App.</p>
+                <button class="btn-primary-action" style="margin-top:10px; font-size:11px; background:var(--grad-sustain); color:white; border-radius:var(--radius-sm);" id="ops-action-trigger-2">Broadcast Discount Offer</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- 6. Transportation AI -->
+      <main class="page-container" id="page-transport">
+        <div class="card-grid">
+          <div class="glass-card">
+            <div class="card-title">Metro Train Wait-times <i data-lucide="train"></i></div>
+            <div class="card-value">4 min</div>
+            <div class="card-subtitle"><span class="trend-up">Normal frequency</span> (6 trains/hour)</div>
+          </div>
+          <div class="glass-card">
+            <div class="card-title">Parking Slots Available <i data-lucide="car"></i></div>
+            <div class="card-value">1,480 / 12,000</div>
+            <div class="card-subtitle">87% Parking Occupancy</div>
+          </div>
+          <div class="glass-card">
+            <div class="card-title">Ride-Share Bottleneck <i data-lucide="navigation-2"></i></div>
+            <div class="card-value" style="color:var(--accent-yellow);">High (16m ETA)</div>
+            <div class="card-subtitle">Uber/Lyft zones congested</div>
+          </div>
+        </div>
+
+        <div class="dashboard-row-equal">
+          <div class="glass-card">
+            <div class="section-header">Live Transit Dashboard & ETA Analytics</div>
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Method</th>
+                  <th>Destination</th>
+                  <th>Freq/Interval</th>
+                  <th>Avg ETA</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight:600;">Secaucus Express (Metro)</td>
+                  <td>Penn Station (NYC)</td>
+                  <td>Every 8 minutes</td>
+                  <td>18 mins</td>
+                  <td><span class="status-pill success">On Time</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:600;">FIFA Shuttle Bus A</td>
+                  <td>VIP Parking Lot 4</td>
+                  <td>Every 5 minutes</td>
+                  <td>7 mins</td>
+                  <td><span class="status-pill success">On Time</span></td>
+                </tr>
+                <tr>
+                  <td style="font-weight:600;">FIFA Shuttle Bus B</td>
+                  <td>Downtown Hub</td>
+                  <td>Every 12 minutes</td>
+                  <td>22 mins</td>
+                  <td><span class="status-pill warning">Delayed</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="glass-card">
+            <div class="section-header">Transport Agent AI Predictions</div>
+            <div style="display:flex; flex-direction:column; gap:14px;">
+              <div style="padding:12px; background:rgba(0,242,254,0.04); border:1px solid rgba(0,242,254,0.1); border-radius:var(--radius-md); font-size:12px;">
+                <strong>Post-Match Exodus Traffic (22:00 EST):</strong> Traffic model predicts 84% private vehicle saturation on Route 120 Northbound. AI recommends delaying parking gate exits by 10 minutes sequentially across zones A-D to stagger traffic release.
+              </div>
+              <div style="padding:12px; background:rgba(245, 158, 11, 0.04); border:1px solid rgba(245, 158, 11, 0.1); border-radius:var(--radius-md); font-size:12px;">
+                <strong>Metro Transit Bottleneck:</strong> Platform surge predicted between 22:15 - 22:45. Transit Agent has contacted NJ Transit to request two additional standby express trains.
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- 7. Emergency Center -->
+      <main class="page-container" id="page-emergency">
+        <div class="glass-card" style="background:rgba(239, 68, 68, 0.05); border-color:var(--accent-red); box-shadow:var(--shadow-glow-red);">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <h2 style="color:var(--accent-red); font-family:var(--font-display); font-size:22px; margin-bottom:6px; display:flex; align-items:center; gap:10px;">
+                <i data-lucide="alert-octagon" style="width:26px; height:26px;"></i> Emergency Command Dashboard
+              </h2>
+              <p style="font-size:13px; color:var(--text-secondary);">Active evacuation plans, structural stress telemetry, and direct fire/medical squad dispatching controls.</p>
+            </div>
+            <button class="btn-primary-action" style="background:var(--grad-danger); color:white;" id="trigger-alarm-btn">
+              <i data-lucide="bell"></i> Broadcast Emergency Alert
+            </button>
+          </div>
+        </div>
+
+        <div class="dashboard-row">
+          <div class="glass-card">
+            <div class="section-header">Evacuation Route Map & Active Hazards</div>
+            <div class="stadium-twin-container" style="height:360px;">
+              <div class="stadium-twin-overlay">
+                <span style="color:var(--accent-red);">🔥 Localized Egress Obstruction: Sector B Hallway</span>
+                <span style="color:var(--accent-cyan);">🟢 Green Paths: Active Safe Evacuation Corridors</span>
+              </div>
+              <svg class="map-svg" viewBox="0 0 500 350" id="emergency-evac-svg">
+                <ellipse cx="250" cy="175" rx="200" ry="140" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="30" />
+                <!-- Evac path lines glowing green -->
+                <path d="M 250 175 L 450 175" fill="none" stroke="var(--accent-green)" stroke-width="6" class="evacuation-path" />
+                <path d="M 250 175 L 250 315" fill="none" stroke="var(--accent-green)" stroke-width="6" class="evacuation-path" />
+                <path d="M 250 175 L 50 175" fill="none" stroke="var(--accent-red)" stroke-width="6" stroke-dasharray="6" />
+                <!-- Hazard indicator -->
+                <circle cx="120" cy="175" r="14" fill="#ef4444" style="animation: pulseRecording 1s infinite;" />
+                <!-- Text -->
+                <text x="100" y="150" fill="var(--accent-red)" font-size="12" font-weight="700">FIRE HAZARD</text>
+                <text x="320" y="195" fill="var(--accent-green)" font-size="11" font-weight="700">SAFE EXIT ROUTE</text>
+              </svg>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="section-header">AI Emergency Agent Decision Support</div>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">AI Evacuation Procedure Recommendation</label>
+                <div style="padding:14px; background:rgba(0,0,0,0.2); border:1px solid var(--border-light); border-radius:var(--radius-md); font-family:var(--font-mono); font-size:11.5px; line-height:1.6;">
+                  [AI EMERGENCY ROUTING DECISION]<br>
+                  Hazard Detected: localized smoke trigger in Sector B Concourse.<br>
+                  Rerouting Action: Close Gate B1. Divert Sectors 108-116 exit flow towards Gate A (Safe Zone) and Gate C.<br>
+                  PA System Announcement: Multilingual emergency audio generated in English, Spanish, and German.<br>
+                  Security Dispatch: Sent squad 2 to verify sensor trigger.
+                </div>
+              </div>
+              <button class="btn-primary-action" style="width:100%; justify-content:center; background:var(--grad-primary);" id="ops-execute-evac-ai">
+                Authorize & Broadcast AI Evacuation Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- 8. AI Chat & RAG Platform -->
+      <main class="page-container" id="page-chat">
+        <div class="chat-window">
+          <!-- Document RAG sidebar -->
+          <div class="chat-sidebar">
+            <div class="chat-sidebar-header">Knowledge Base (RAG Inputs)</div>
+            <div class="doc-list">
+              <div class="doc-item active" data-doc="rules">
+                <i data-lucide="file-text"></i> Stadium Rules.pdf
+              </div>
+              <div class="doc-item" data-doc="evac">
+                <i data-lucide="shield-alert"></i> Emergency Egress.doc
+              </div>
+              <div class="doc-item" data-doc="tickets">
+                <i data-lucide="ticket"></i> Ticket Policies.pdf
+              </div>
+              <div class="doc-item" data-doc="transit">
+                <i data-lucide="bus"></i> Transportation Schedule.xls
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Chat console -->
+          <div class="chat-main">
+            <div class="chat-sidebar-header" style="border-bottom: 1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center;">
+              <span>RAG-Powered AI Stadium Assistant</span>
+              <span style="font-size:10px; color:var(--accent-green); font-family:var(--font-mono);"><i data-lucide="check"></i> Vector DB Connected</span>
+            </div>
+            
+            <div class="chat-history" id="chat-history-box">
+              <!-- Default Greeting -->
+              <div class="chat-msg msg-assistant">
+                <div class="chat-msg-bubble">
+                  <div class="chat-msg-sender">AI Stadium Assistant</div>
+                  Hello! I am your real-time stadium assistant. I have loaded documents covering stadium rules, transportation, accessibility, and emergency guides. Ask me any question, or use the microphone button below to talk to me!
+                </div>
+              </div>
+            </div>
+
+            <div class="chat-input-area">
+              <button class="voice-chat-btn" id="chat-voice-btn" title="Voice Input">
+                <i data-lucide="mic"></i>
+              </button>
+              
+              <div class="chat-input-wrapper">
+                <input type="text" id="chat-text-input" placeholder="Ask about routes, tickets, rules, or transportation..." class="chat-input">
+                <button class="chat-send-btn" id="chat-send-btn">
+                  <i data-lucide="arrow-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- 9. Sustainability AI -->
+      <main class="page-container" id="page-analytics">
+        <div class="card-grid">
+          <div class="glass-card">
+            <div class="card-title">Energy Saving Rate <i data-lucide="zap"></i></div>
+            <div class="card-value" style="color:var(--accent-green);">14.2%</div>
+            <div class="card-subtitle">Smart LED grid active</div>
+          </div>
+          <div class="glass-card">
+            <div class="card-title">Water Recycled <i data-lucide="droplet"></i></div>
+            <div class="card-value" style="color:var(--accent-cyan);">18,450 gal</div>
+            <div class="card-subtitle">Match target: 20,000 gal</div>
+          </div>
+          <div class="glass-card">
+            <div class="card-title">Carbon Emission Savings <i data-lucide="globe"></i></div>
+            <div class="card-value" style="color:var(--accent-green);">12.4 Tons CO₂e</div>
+            <div class="card-subtitle">Transportation offsets included</div>
+          </div>
+          <div class="glass-card">
+            <div class="card-title">Smart Waste Diverted <i data-lucide="trash-2"></i></div>
+            <div class="card-value" style="color:var(--accent-yellow);">82%</div>
+            <div class="card-subtitle">Composting/Recycling bins optimized</div>
+          </div>
+        </div>
+
+        <div class="dashboard-row-equal">
+          <div class="glass-card">
+            <div class="section-header">Live Sustainability Analytics</div>
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <div>
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-secondary); margin-bottom:6px;">
+                  <span>Grid Power Utilization</span>
+                  <span>420 kW / 600 kW</span>
+                </div>
+                <div style="width:100%; height:8px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden;">
+                  <div style="width:70%; height:100%; background:var(--grad-sustain); border-radius:4px;"></div>
+                </div>
+              </div>
+              
+              <div>
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-secondary); margin-bottom:6px;">
+                  <span>Rainwater Cistern Capacity</span>
+                  <span>84% Full</span>
+                </div>
+                <div style="width:100%; height:8px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden;">
+                  <div style="width:84%; height:100%; background:linear-gradient(90deg, #4facfe, #00f2fe); border-radius:4px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="section-header">Sustainability Agent Action Items</div>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div style="padding:12px; background:rgba(16,185,129,0.04); border:1px solid rgba(16,185,129,0.1); border-radius:var(--radius-md); font-size:12px;">
+                <strong>HVAC Micro-Zoning Optimization:</strong> Sensor data shows lower crowd density in upper Sectors 301-308. AI has adjusted localized air conditioning targets by +2°F, reducing electricity drain by 18 kW.
+              </div>
+              <div style="padding:12px; background:rgba(16,185,129,0.04); border:1px solid rgba(16,185,129,0.1); border-radius:var(--radius-md); font-size:12px;">
+                <strong>Smart Waste Overflow Forecast:</strong> Sector C recycling station 3 is filling up rapidly. AI has dispatched cleanup squad 1 to replace containers before next break.
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- 10. Operational Reports -->
+      <main class="page-container" id="page-reports">
+        <div class="glass-card">
+          <div class="section-header">FIFA Operations Report Generator <i data-lucide="clipboard"></i></div>
+          <p style="font-size:13px; color:var(--text-secondary); margin-bottom:20px;">Use the GenAI generation engine to draft instant executive summaries, ESG compliance records, and crowd flow efficiency logs.</p>
+          <div style="display:flex; gap:16px; margin-bottom:20px;">
+            <select id="report-type" class="btn-secondary-action" style="padding:10px 14px; background:rgba(255,255,255,0.04); border-color:var(--border-light); font-size:13px;">
+              <option value="exec">Executive Summary Report (Daily)</option>
+              <option value="sustain">ESG & Carbon Footprint Compliance</option>
+              <option value="incidents">Incident and Security Dispatch Log</option>
+            </select>
+            <button class="btn-primary-action" id="generate-report-btn">Generate AI Report</button>
+          </div>
+
+          <!-- Report preview box -->
+          <div id="report-output-box" style="padding:24px; background:rgba(0,0,0,0.25); border:1px solid var(--border-light); border-radius:var(--radius-md); font-family:var(--font-mono); font-size:12px; line-height:1.6; display:none; max-height:400px; overflow-y:auto;">
+            <!-- Generated report injected here -->
+          </div>
+        </div>
+      </main>
+
+      <!-- 11. System Settings & Accessibility -->
+      <main class="page-container" id="page-settings">
+        <div class="dashboard-row-equal">
+          <div class="glass-card">
+            <div class="section-header">Accessibility Customizations <i data-lucide="accessibility"></i></div>
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <div>
+                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:8px;">Color Blind Contrast Filters</label>
+                <div class="accessibility-bar">
+                  <button class="acc-toggle-btn active" id="filter-none">Normal Vision</button>
+                  <button class="acc-toggle-btn" id="filter-protanopia">Protanopia</button>
+                  <button class="acc-toggle-btn" id="filter-deuteranopia">Deuteranopia</button>
+                  <button class="acc-toggle-btn" id="filter-tritanopia">Tritanopia</button>
+                  <button class="acc-toggle-btn" id="filter-contrast">High Contrast</button>
+                </div>
+              </div>
+              
+              <div>
+                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:8px;">Visual & Reading Enhancements</label>
+                <div class="accessibility-bar">
+                  <button class="acc-toggle-btn" id="toggle-dyslexic">Easy Reading (Dyslexic Friendly)</button>
+                  <button class="acc-toggle-btn" id="toggle-zoom">Large Text Size (+15%)</button>
+                </div>
+              </div>
+
+              <div>
+                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:8px;">Audio Assistive Settings</label>
+                <div class="accessibility-bar">
+                  <button class="acc-toggle-btn" id="toggle-screenreader">Enable Screen Reader Announcements</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="section-header">System Profile & Model Controls <i data-lucide="sliders"></i></div>
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <div>
+                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:6px;">Large Language Model Selection</label>
+                <select class="btn-secondary-action" style="width:100%; text-align:left; background:rgba(255,255,255,0.04); padding:10px;">
+                  <option value="gpt4">Claude 3.5 Sonnet (Default)</option>
+                  <option value="gemini">Gemini 1.5 Pro</option>
+                  <option value="gpt4o">OpenAI GPT-4o</option>
+                  <option value="llama">Llama 3 70B (Offline Local Mode)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:6px;">LLM Temperature & Creativity</label>
+                <input type="range" min="0" max="1" step="0.1" value="0.4" style="width:100%; cursor:pointer;">
+                <div style="display:flex; justify-content:between; font-size:10px; color:var(--text-muted); margin-top:4px;">
+                  <span>0.0 Precise</span>
+                  <span style="margin-left:auto;">1.0 Creative</span>
+                </div>
+              </div>
+
+              <div>
+                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:6px;">RAG Retrieval Limit (Top K Documents)</label>
+                <input type="number" value="4" class="chat-input" style="padding:8px 12px; font-size:12px; width:100%;">
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Lucide Icons Library and Custom Application Logic -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.321.0/dist/umd/lucide.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
