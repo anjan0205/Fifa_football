@@ -1,11 +1,19 @@
 from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import datetime
 
 from .database import get_db, settings
 from . import models, schemas
+from .auth import (
+    create_access_token,
+    get_current_user,
+    get_password_hash,
+    require_roles,
+    verify_password,
+)
 from .rag_pipeline import rag_pipeline
 from .ai_agents import run_command_center_agents
 
@@ -16,12 +24,14 @@ app = FastAPI(
 )
 
 # CORS middleware configuration
+# Wildcard origins with credentials is invalid/unsafe; use an explicit
+# allow-list sourced from configuration.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Root Endpoint
@@ -44,14 +54,16 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == user_data.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
-    
-    # In production, hash the password (mock hashing for fast setup)
-    hashed_pwd = f"pbkdf2:{user_data.password}"
+
+    # Self-service registration is restricted to the 'fan' role. Elevated
+    # roles (volunteer, operator) must be provisioned by an operator to
+    # prevent privilege escalation.
+    hashed_pwd = get_password_hash(user_data.password)
     new_user = models.User(
         username=user_data.username,
         email=user_data.email,
         hashed_password=hashed_pwd,
-        role=user_data.role
+        role="fan",
     )
     db.add(new_user)
     db.commit()
@@ -61,13 +73,13 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
 @auth_router.post("/login", response_model=schemas.Token)
 def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == login_data.username).first()
-    if not user or user.hashed_password != f"pbkdf2:{login_data.password}":
+    if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect username or password")
-    
-    # Generate mock JWT Token
+
+    access_token = create_access_token(username=user.username, role=user.role)
     return {
-        "access_token": f"mock_jwt_token_for_{user.username}_{user.role}",
-        "token_type": "bearer"
+        "access_token": access_token,
+        "token_type": "bearer",
     }
 
 # =============================================================
@@ -76,11 +88,18 @@ def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
 match_router = APIRouter(prefix="/api/matches", tags=["Matches & Tickets"])
 
 @match_router.get("/", response_model=List[schemas.MatchResponse])
-def get_matches(db: Session = Depends(get_db)):
+def get_matches(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     return db.query(models.Match).all()
 
 @match_router.post("/", response_model=schemas.MatchResponse)
-def create_match(match: schemas.MatchCreate, db: Session = Depends(get_db)):
+def create_match(
+    match: schemas.MatchCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("operator")),
+):
     db_match = models.Match(**match.model_dump())
     db.add(db_match)
     db.commit()
@@ -88,7 +107,11 @@ def create_match(match: schemas.MatchCreate, db: Session = Depends(get_db)):
     return db_match
 
 @match_router.post("/tickets", response_model=schemas.TicketResponse)
-def issue_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
+def issue_ticket(
+    ticket: schemas.TicketCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("operator")),
+):
     # Generate mock QR code value
     qr_val = f"FIFA-2026-{ticket.match_id}-SEC{ticket.seat_sector}-R{ticket.seat_row}-S{ticket.seat_number}"
     db_ticket = models.Ticket(
@@ -110,14 +133,22 @@ def issue_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
 incident_router = APIRouter(prefix="/api/incidents", tags=["Operations Incident Control"])
 
 @incident_router.get("/", response_model=List[schemas.IncidentResponse])
-def get_incidents(status: Optional[str] = None, db: Session = Depends(get_db)):
+def get_incidents(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     query = db.query(models.Incident)
     if status:
         query = query.filter(models.Incident.status == status)
     return query.all()
 
 @incident_router.post("/", response_model=schemas.IncidentResponse)
-def report_incident(incident: schemas.IncidentCreate, db: Session = Depends(get_db)):
+def report_incident(
+    incident: schemas.IncidentCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     db_inc = models.Incident(**incident.model_dump())
     db.add(db_inc)
     db.commit()
@@ -125,7 +156,12 @@ def report_incident(incident: schemas.IncidentCreate, db: Session = Depends(get_
     return db_inc
 
 @incident_router.patch("/{incident_id}", response_model=schemas.IncidentResponse)
-def update_incident(incident_id: int, updates: schemas.IncidentUpdate, db: Session = Depends(get_db)):
+def update_incident(
+    incident_id: int,
+    updates: schemas.IncidentUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("operator", "volunteer")),
+):
     db_inc = db.query(models.Incident).filter(models.Incident.id == incident_id).first()
     if not db_inc:
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -144,14 +180,22 @@ def update_incident(incident_id: int, updates: schemas.IncidentUpdate, db: Sessi
 sensor_router = APIRouter(prefix="/api/telemetry", tags=["Digital Twin Telemetry"])
 
 @sensor_router.get("/sensors", response_model=List[schemas.SensorDataResponse])
-def get_sensor_data(sensor_type: Optional[str] = None, db: Session = Depends(get_db)):
+def get_sensor_data(
+    sensor_type: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     query = db.query(models.SensorData)
     if sensor_type:
         query = query.filter(models.SensorData.sensor_type == sensor_type)
     return query.order_by(models.SensorData.recorded_at.desc()).limit(100).all()
 
 @sensor_router.post("/sensors", response_model=schemas.SensorDataResponse)
-def add_sensor_data(data: schemas.SensorDataCreate, db: Session = Depends(get_db)):
+def add_sensor_data(
+    data: schemas.SensorDataCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("operator")),
+):
     db_data = models.SensorData(**data.model_dump())
     db.add(db_data)
     db.commit()
@@ -159,7 +203,10 @@ def add_sensor_data(data: schemas.SensorDataCreate, db: Session = Depends(get_db
     return db_data
 
 @sensor_router.get("/emissions", response_model=List[schemas.EmissionsResponse])
-def get_emissions(db: Session = Depends(get_db)):
+def get_emissions(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     return db.query(models.Emissions).all()
 
 # =============================================================
@@ -175,7 +222,10 @@ class AgentPayload(BaseModel):
     prompt: str
 
 @ai_router.post("/chat")
-def semantic_chat_rag(payload: ChatPayload):
+def semantic_chat_rag(
+    payload: ChatPayload,
+    current_user: models.User = Depends(get_current_user),
+):
     """
     Standard semantic Q&A that searches loaded vector documents (RAG).
     """
@@ -188,7 +238,10 @@ def semantic_chat_rag(payload: ChatPayload):
     }
 
 @ai_router.post("/agent")
-def run_multi_agent_workflow(payload: AgentPayload):
+def run_multi_agent_workflow(
+    payload: AgentPayload,
+    current_user: models.User = Depends(get_current_user),
+):
     """
     Orchestrate state-graph multi-agent coordination via LangGraph.
     """
@@ -201,7 +254,11 @@ def run_multi_agent_workflow(payload: AgentPayload):
     }
 
 @ai_router.post("/report")
-def generate_compliance_report(report_type: str = "executive", db: Session = Depends(get_db)):
+def generate_compliance_report(
+    report_type: str = "executive",
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_roles("operator")),
+):
     """
     Compile database records and sensor counts to output GenAI operational summaries.
     """
