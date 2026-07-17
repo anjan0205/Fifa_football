@@ -204,6 +204,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 4000);
 
+  // Helper: Append a node to a scrollable container and keep it pinned to bottom
+  function appendAndScroll(container, element) {
+    container.appendChild(element);
+    container.scrollTop = container.scrollHeight;
+  }
+
   // Helper: Append line to logs panel
   function addLogLine(type, text) {
     const logBox = document.getElementById('ops-incident-log');
@@ -212,8 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
       line.className = `agent-log-line ${type === 'system' ? 'system' : `agent-${type}`}`;
       const timeStr = new Date().toLocaleTimeString();
       line.textContent = `[${timeStr}] ${text}`;
-      logBox.appendChild(line);
-      logBox.scrollTop = logBox.scrollHeight;
+      appendAndScroll(logBox, line);
     }
   }
 
@@ -246,8 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ${text}
       </div>
     `;
-    chatHistoryBox.appendChild(msg);
-    chatHistoryBox.scrollTop = chatHistoryBox.scrollHeight;
+    appendAndScroll(chatHistoryBox, msg);
   }
 
   function handleChatSubmit() {
@@ -288,8 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ${stepsHtml}
       </div>
     `;
-    chatHistoryBox.appendChild(msg);
-    chatHistoryBox.scrollTop = chatHistoryBox.scrollHeight;
+    appendAndScroll(chatHistoryBox, msg);
     lucide.createIcons();
 
     // Trigger TTS if screenreader toggle is enabled
@@ -432,8 +435,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  if (voiceMicBtn) voiceMicBtn.addEventListener('click', toggleVoice);
-  if (chatVoiceBtn) chatVoiceBtn.addEventListener('click', toggleVoice);
+  [voiceMicBtn, chatVoiceBtn].forEach(btn => {
+    if (btn) btn.addEventListener('click', toggleVoice);
+  });
 
   // Text-To-Speech function
   function speakText(text) {
@@ -491,9 +495,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  if (simEgressBtn) simEgressBtn.addEventListener('click', triggerEmergencySystem);
-  if (executeEvacBtn) executeEvacBtn.addEventListener('click', triggerEmergencySystem);
-  if (triggerAlarmBtn) triggerAlarmBtn.addEventListener('click', triggerEmergencySystem);
+  [simEgressBtn, executeEvacBtn, triggerAlarmBtn].forEach(btn => {
+    if (btn) btn.addEventListener('click', triggerEmergencySystem);
+  });
 
   // -------------------------------------------------------------
   // Accessibility Control System
@@ -543,11 +547,16 @@ document.addEventListener('DOMContentLoaded', () => {
     addLogLine('system', `Applied vision contrast filter: ${filterName}`);
   }
 
-  if (filterNone) filterNone.addEventListener('click', () => applyColorFilter('none'));
-  if (filterProtanopia) filterProtanopia.addEventListener('click', () => applyColorFilter('protanopia'));
-  if (filterDeuteranopia) filterDeuteranopia.addEventListener('click', () => applyColorFilter('deuteranopia'));
-  if (filterTritanopia) filterTritanopia.addEventListener('click', () => applyColorFilter('tritanopia'));
-  if (filterContrast) filterContrast.addEventListener('click', () => applyColorFilter('contrast'));
+  const colorFilterButtons = [
+    { el: filterNone, name: 'none' },
+    { el: filterProtanopia, name: 'protanopia' },
+    { el: filterDeuteranopia, name: 'deuteranopia' },
+    { el: filterTritanopia, name: 'tritanopia' },
+    { el: filterContrast, name: 'contrast' }
+  ];
+  colorFilterButtons.forEach(({ el, name }) => {
+    if (el) el.addEventListener('click', () => applyColorFilter(name));
+  });
 
   // Text Adjustments
   if (toggleDyslexic) {
