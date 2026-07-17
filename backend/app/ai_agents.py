@@ -1,11 +1,17 @@
-import os
+import logging
 from typing import Dict, Any, List, TypedDict, Annotated
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from .database import settings
-from .rag_pipeline import rag_pipeline
+from .rag_pipeline import rag_pipeline, RAGPipelineError
+
+logger = logging.getLogger(__name__)
+
+
+class AgentExecutionError(Exception):
+    """Raised when the multi-agent workflow fails to produce a result."""
 
 # Define shared Multi-Agent state
 class AgentState(TypedDict):
@@ -39,9 +45,15 @@ def navigation_agent_node(state: AgentState) -> Dict[str, Any]:
     messages = state["messages"]
     last_msg = messages[-1].content
     
-    # Query RAG context for navigation
-    context_data = rag_pipeline.query(last_msg, top_k=2)
-    docs = context_data["documents"]
+    # Query RAG context for navigation. Retrieval is supplementary here, so a
+    # failure is logged and the agent continues without extra context rather
+    # than aborting the whole workflow.
+    try:
+        context_data = rag_pipeline.query(last_msg, top_k=2)
+        docs = context_data["documents"]
+    except RAGPipelineError:
+        logger.exception("RAG retrieval failed in navigation agent; continuing without context")
+        docs = []
     
     prompt = (
         f"You are the Stadium Navigation Agent. Your job is to find optimal, safe, and wheelchair-accessible paths.\n"
@@ -238,7 +250,12 @@ def run_command_center_agents(user_prompt: str) -> Dict[str, Any]:
         "emergency_active": False
     }
     
-    output_state = agent_orchestrator.invoke(initial_state)
+    try:
+        output_state = agent_orchestrator.invoke(initial_state)
+    except Exception as exc:
+        logger.exception("Multi-agent orchestration failed")
+        raise AgentExecutionError("Multi-agent orchestration failed") from exc
+
     return {
         "final_reply": output_state["messages"][-1].content,
         "logs": output_state["recommendations"],
