@@ -1,11 +1,12 @@
 from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
 import datetime
 
 from .database import get_db, settings
-from . import models, schemas
+from . import models, schemas, crud
 from .rag_pipeline import rag_pipeline
 from .ai_agents import run_command_center_agents
 
@@ -53,10 +54,7 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
         hashed_password=hashed_pwd,
         role=user_data.role
     )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+    return crud.save(db, new_user)
 
 @auth_router.post("/login", response_model=schemas.Token)
 def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
@@ -82,10 +80,7 @@ def get_matches(db: Session = Depends(get_db)):
 @match_router.post("/", response_model=schemas.MatchResponse)
 def create_match(match: schemas.MatchCreate, db: Session = Depends(get_db)):
     db_match = models.Match(**match.model_dump())
-    db.add(db_match)
-    db.commit()
-    db.refresh(db_match)
-    return db_match
+    return crud.save(db, db_match)
 
 @match_router.post("/tickets", response_model=schemas.TicketResponse)
 def issue_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
@@ -99,10 +94,7 @@ def issue_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
         seat_number=ticket.seat_number,
         qr_code=qr_val
     )
-    db.add(db_ticket)
-    db.commit()
-    db.refresh(db_ticket)
-    return db_ticket
+    return crud.save(db, db_ticket)
 
 # =============================================================
 # Incident Command Endpoints
@@ -119,10 +111,7 @@ def get_incidents(status: Optional[str] = None, db: Session = Depends(get_db)):
 @incident_router.post("/", response_model=schemas.IncidentResponse)
 def report_incident(incident: schemas.IncidentCreate, db: Session = Depends(get_db)):
     db_inc = models.Incident(**incident.model_dump())
-    db.add(db_inc)
-    db.commit()
-    db.refresh(db_inc)
-    return db_inc
+    return crud.save(db, db_inc)
 
 @incident_router.patch("/{incident_id}", response_model=schemas.IncidentResponse)
 def update_incident(incident_id: int, updates: schemas.IncidentUpdate, db: Session = Depends(get_db)):
@@ -131,12 +120,7 @@ def update_incident(incident_id: int, updates: schemas.IncidentUpdate, db: Sessi
         raise HTTPException(status_code=404, detail="Incident not found")
     
     update_data = updates.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_inc, key, value)
-    
-    db.commit()
-    db.refresh(db_inc)
-    return db_inc
+    return crud.apply_updates(db, db_inc, update_data)
 
 # =============================================================
 # Telemetry Sensors & Sustainability Endpoints
@@ -153,10 +137,7 @@ def get_sensor_data(sensor_type: Optional[str] = None, db: Session = Depends(get
 @sensor_router.post("/sensors", response_model=schemas.SensorDataResponse)
 def add_sensor_data(data: schemas.SensorDataCreate, db: Session = Depends(get_db)):
     db_data = models.SensorData(**data.model_dump())
-    db.add(db_data)
-    db.commit()
-    db.refresh(db_data)
-    return db_data
+    return crud.save(db, db_data)
 
 @sensor_router.get("/emissions", response_model=List[schemas.EmissionsResponse])
 def get_emissions(db: Session = Depends(get_db)):
