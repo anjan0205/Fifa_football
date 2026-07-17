@@ -1,8 +1,16 @@
-import os
+import logging
 import chromadb
 from chromadb.utils import embedding_functions
 from typing import List, Dict, Any
 from .database import settings
+
+logger = logging.getLogger(__name__)
+
+
+class RAGPipelineError(Exception):
+    """Raised when a vector-store operation fails so callers can react
+    instead of silently receiving empty results."""
+
 
 class RAGPipeline:
     def __init__(self):
@@ -37,10 +45,9 @@ class RAGPipeline:
                 metadatas=metadatas,
                 ids=ids
             )
-            return True
-        except Exception as e:
-            print(f"Error adding documents to vector store: {e}")
-            return False
+        except Exception as exc:
+            logger.exception("Error adding documents to vector store")
+            raise RAGPipelineError("Failed to add documents to vector store") from exc
 
     def query(self, search_text: str, top_k: int = 3) -> Dict[str, Any]:
         """
@@ -51,14 +58,15 @@ class RAGPipeline:
                 query_texts=[search_text],
                 n_results=top_k
             )
-            return {
-                "documents": results["documents"][0] if results["documents"] else [],
-                "metadatas": results["metadatas"][0] if results["metadatas"] else [],
-                "distances": results["distances"][0] if results["distances"] else []
-            }
-        except Exception as e:
-            print(f"Error querying vector store: {e}")
-            return {"documents": [], "metadatas": [], "distances": []}
+        except Exception as exc:
+            logger.exception("Error querying vector store")
+            raise RAGPipelineError("Failed to query vector store") from exc
+
+        return {
+            "documents": results["documents"][0] if results["documents"] else [],
+            "metadatas": results["metadatas"][0] if results["metadatas"] else [],
+            "distances": results["distances"][0] if results["distances"] else []
+        }
 
     def initialize_seed_data(self):
         """
@@ -101,9 +109,9 @@ class RAGPipeline:
 
 # Instantiate global pipeline helper
 rag_pipeline = RAGPipeline()
-# Automatically run seeding
+# Automatically run seeding. Seeding is best-effort at import time (e.g. the DB
+# path may be locked), so failures are logged rather than crashing startup.
 try:
     rag_pipeline.initialize_seed_data()
 except Exception:
-    # Ignore errors during startup build if environment locks DB path
-    pass
+    logger.exception("Failed to seed RAG vector store during startup")

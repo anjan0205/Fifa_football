@@ -1,13 +1,33 @@
+import datetime
+import logging
+from typing import List, Dict, Any, Optional
+
 from fastapi import FastAPI, Depends, HTTPException, status, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
-import datetime
 
 from .database import get_db, settings
 from . import models, schemas
-from .rag_pipeline import rag_pipeline
-from .ai_agents import run_command_center_agents
+from .rag_pipeline import rag_pipeline, RAGPipelineError
+from .ai_agents import run_command_center_agents, AgentExecutionError
+
+logger = logging.getLogger(__name__)
+
+
+def commit_or_500(db: Session, action: str):
+    """Commit the current transaction, rolling back and surfacing a clear
+    error instead of letting a raw SQLAlchemy exception escape as an opaque 500."""
+    try:
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.exception("Database error while %s", action)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Database error while {action}.",
+        ) from exc
 
 app = FastAPI(
     title="FIFA World Cup 2026 AI Command Center API",
@@ -54,7 +74,7 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
         role=user_data.role
     )
     db.add(new_user)
-    db.commit()
+    commit_or_500(db, "registering user")
     db.refresh(new_user)
     return new_user
 
@@ -83,7 +103,7 @@ def get_matches(db: Session = Depends(get_db)):
 def create_match(match: schemas.MatchCreate, db: Session = Depends(get_db)):
     db_match = models.Match(**match.model_dump())
     db.add(db_match)
-    db.commit()
+    commit_or_500(db, "creating match")
     db.refresh(db_match)
     return db_match
 
@@ -100,7 +120,7 @@ def issue_ticket(ticket: schemas.TicketCreate, db: Session = Depends(get_db)):
         qr_code=qr_val
     )
     db.add(db_ticket)
-    db.commit()
+    commit_or_500(db, "issuing ticket")
     db.refresh(db_ticket)
     return db_ticket
 
@@ -120,7 +140,7 @@ def get_incidents(status: Optional[str] = None, db: Session = Depends(get_db)):
 def report_incident(incident: schemas.IncidentCreate, db: Session = Depends(get_db)):
     db_inc = models.Incident(**incident.model_dump())
     db.add(db_inc)
-    db.commit()
+    commit_or_500(db, "reporting incident")
     db.refresh(db_inc)
     return db_inc
 
@@ -134,7 +154,7 @@ def update_incident(incident_id: int, updates: schemas.IncidentUpdate, db: Sessi
     for key, value in update_data.items():
         setattr(db_inc, key, value)
     
-    db.commit()
+    commit_or_500(db, "updating incident")
     db.refresh(db_inc)
     return db_inc
 
@@ -154,7 +174,7 @@ def get_sensor_data(sensor_type: Optional[str] = None, db: Session = Depends(get
 def add_sensor_data(data: schemas.SensorDataCreate, db: Session = Depends(get_db)):
     db_data = models.SensorData(**data.model_dump())
     db.add(db_data)
-    db.commit()
+    commit_or_500(db, "adding sensor data")
     db.refresh(db_data)
     return db_data
 
@@ -179,7 +199,14 @@ def semantic_chat_rag(payload: ChatPayload):
     """
     Standard semantic Q&A that searches loaded vector documents (RAG).
     """
-    search_results = rag_pipeline.query(payload.query, top_k=payload.top_k)
+    try:
+        search_results = rag_pipeline.query(payload.query, top_k=payload.top_k)
+    except RAGPipelineError as exc:
+        logger.exception("RAG query failed")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Retrieval service is currently unavailable.",
+        ) from exc
     return {
         "query": payload.query,
         "contexts_retrieved": search_results["documents"],
@@ -192,7 +219,14 @@ def run_multi_agent_workflow(payload: AgentPayload):
     """
     Orchestrate state-graph multi-agent coordination via LangGraph.
     """
-    result = run_command_center_agents(payload.prompt)
+    try:
+        result = run_command_center_agents(payload.prompt)
+    except AgentExecutionError as exc:
+        logger.exception("Multi-agent workflow failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Agent workflow execution failed.",
+        ) from exc
     return {
         "input_prompt": payload.prompt,
         "agent_response": result["final_reply"],
