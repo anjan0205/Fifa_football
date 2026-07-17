@@ -267,6 +267,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') handleChatSubmit();
   });
 
+  // Escape untrusted text before it is placed into innerHTML to prevent
+  // DOM-based XSS from user-supplied chat/voice input.
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function appendMessage(role, sender, text, agentSteps = []) {
     const msg = document.createElement('div');
     msg.className = `chat-msg ${role === 'user' ? 'msg-user' : 'msg-assistant'}`;
@@ -276,15 +287,15 @@ document.addEventListener('DOMContentLoaded', () => {
       stepsHtml = `
         <div class="chat-agent-thinking">
           <strong><i data-lucide="bot" style="width:12px; height:12px; display:inline; vertical-align:middle;"></i> Multi-Agent Orchestration Log:</strong>
-          ${agentSteps.map(step => `<div>${step}</div>`).join('')}
+          ${agentSteps.map(step => `<div>${escapeHtml(step)}</div>`).join('')}
         </div>
       `;
     }
 
     msg.innerHTML = `
       <div class="chat-msg-bubble">
-        <div class="chat-msg-sender">${sender}</div>
-        <div>${text}</div>
+        <div class="chat-msg-sender">${escapeHtml(sender)}</div>
+        <div>${escapeHtml(text)}</div>
         ${stepsHtml}
       </div>
     `;
