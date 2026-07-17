@@ -1,0 +1,20 @@
+# Test-only dependencies for the backend unit test suite.
+#
+# The suite runs without PostgreSQL, chromadb, or any AI provider: the DB is
+# SQLite, chromadb is faked, and the LangChain chat-provider imports are stubbed
+# (see tests/conftest.py). Only the lightweight langgraph + langchain-core are
+# needed to exercise the real agent graph via the built-in MockLLM.
+#
+# httpx is pinned <0.28 because Starlette's TestClient relies on the httpx
+# `app=` shortcut removed in 0.28.
+
+fastapi==0.110.0
+sqlalchemy==2.0.28
+pydantic==2.13.4
+pydantic-settings==2.2.1
+email-validator==2.3.0
+httpx==0.27.2
+langgraph==1.2.9
+langchain-core==1.4.9
+pytest==9.1.1
+pytest-cov==7.1.0
